@@ -1,0 +1,177 @@
+# Imports
+from kivymd.app import MDApp
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.list import TwoLineAvatarListItem
+from kivy.metrics import dp
+from kivy.properties import StringProperty
+
+# popup
+
+# Two buttons on the screen, text fields aren't , trying to push post, popup appeared, than click ok and cancel
+#
+# Define our APP
+
+
+class MyApp(MDApp):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # Define other variables
+        self.dialog = None
+        self.index = 0
+        self.first_row_temp = 0
+        self.second_row_temp = 0
+        self.third_row_temp = 0
+        self.fourth_row_temp = 0
+
+        # Define main layout
+        self.bl_main = MDBoxLayout(orientation='vertical')
+
+        # Define 1 and 2 layouts
+        self.bl_1 = MDBoxLayout(orientation='horizontal', size_hint=(1, 0.1))
+        self.bl_2 = MDBoxLayout(orientation='horizontal', spacing=10, padding=-20)# size_hint=(1, 0.4))
+        self.bl_3 = MDBoxLayout(orientation='horizontal', size_hint=(1, 0.4))
+
+        # Define main table
+        self.table = MDDataTable(
+            background_color_header="#65275d",
+            use_pagination=True,
+            size_hint=(1, 2),
+            pos_hint={"center_x": .5, "center_y": .5},
+            column_data=[
+                ("[color=#FFFFE0]First Name[/color]", dp(20)),
+                ("[color=#FFFFE0]Last Name[/color]", dp(20)),
+                ("[color=#FFFFE0]Email Address[/color]", dp(20)),
+                ("[color=#FFFFE0]Phone Number[/color]", dp(20))
+            ],
+            row_data=[
+                (1, 2, 3, 4),
+            ]
+        )
+
+        self.table.bind(on_row_press=self.on_row_click)
+        self.edit_button = MDRaisedButton(
+            text="Edit",
+            size_hint=(0.2, 1),
+            on_release=self.on_edit_button_click
+        )
+        self.post_button = MDRaisedButton(
+            text="Post",
+            size_hint=(0.2, 1),
+            on_release=self.on_post_button_click
+        )
+        self.delete_button = MDRaisedButton(
+            text="Delete",
+            size_hint=(0.2, 1),
+            on_release=self.on_delete_button_click
+        )
+        self.input_first_name = MDTextField(
+            hint_text="First name",
+            mode="rectangle",
+            required=True,
+            #size_hint=(0.1, 0.1)
+        )
+        self.input_second_name = MDTextField(
+            hint_text="Second name",
+            mode="rectangle",
+            required=True,
+            #size_hint=(0.1, 0.1)
+        )
+        self.input_email = MDTextField(
+            hint_text="Email address",
+            mode="rectangle",
+            required=True,
+            #size_hint=(0.1, 0.1)
+        )
+        self.input_phone_number = MDTextField(
+            hint_text="Phone number",
+            mode="rectangle",
+            required=True,
+            #size_hint=(0.1, 0.1)
+        )
+
+    def on_row_click(self, instance_table, current_row):
+        self.index = current_row.index // 4
+        first, second, third, fourth = instance_table.row_data[self.index]
+        temp_list = [str(first), str(second), str(third), str(fourth)]
+        self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = temp_list
+        self.show_confirmation_dialog()
+
+    def show_confirmation_dialog(self):
+        try:
+            self.bl_2.parent.remove_widget(self.bl_2)
+        except AttributeError:
+            print('LOX')
+        self.dialog = MDDialog(
+                type="custom",
+                #size_hint=(None,None),
+               # size=(400,300),
+                content_cls=self.bl_2,
+                buttons=[
+                    MDRaisedButton(
+                        text="CANCEL",
+                        on_release=self.close_dialog
+
+                    ),
+                    MDRaisedButton(
+                        text="EDIT",
+                        on_release=self.on_edit_button_click
+                    ),
+                    MDRaisedButton(
+                        text="DELETE",
+                        on_release=self.on_delete_button_click
+                    ),
+                ],
+            )
+        self.dialog.open()
+
+    def close_dialog(self, *args):
+        if self.dialog:
+            self.dialog.dismiss()
+
+    def on_delete_button_click(self, *args):
+        try:
+            self.table.remove_row(self.table.row_data[self.index])
+            self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = ' ', ' ', ' ', ' '
+        except IndexError:
+            pass
+
+    def on_post_button_click(self, *args):
+        self.table.row_data.append(
+            [self.input_first_name.text, self.input_second_name.text, self.input_email.text,
+             self.input_phone_number.text])
+        self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = ' ', ' ', ' ', ' '
+
+    def on_edit_button_click(self, *args):
+        try:
+            self.table.update_row(self.table.row_data[self.index],
+                                  [self.input_first_name.text, self.input_second_name.text, self.input_email.text,
+                                   self.input_phone_number.text])
+            self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = ' ', ' ', ' ', ' '
+        except IndexError:
+            pass
+
+    def build(self):
+        self.bl_main.add_widget(self.table)
+
+        self.bl_2.add_widget(self.input_first_name)
+        self.bl_2.add_widget(self.input_second_name)
+        self.bl_2.add_widget(self.input_email)
+        self.bl_2.add_widget(self.input_phone_number)
+
+        self.bl_3.add_widget(self.post_button)
+        #self.bl_3.add_widget(self.delete_button)
+
+        self.bl_main.add_widget(self.bl_1)
+        #self.bl_main.add_widget(self.bl_2)
+        self.bl_main.add_widget(self.bl_3)
+        return self.bl_main
+
+
+if __name__ == '__main__':
+    MyApp().run()
