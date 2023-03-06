@@ -119,7 +119,8 @@ class MyApp(MDApp):
 
                     ),
                     MDRaisedButton(
-                        text="EDIT"
+                        text="EDIT",
+                        on_release=self.on_edit_button_click
                     ),
                 ],
             )
