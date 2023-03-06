@@ -1,19 +1,47 @@
 # Imports
-from kivymd.app import MDApp
-from kivymd.uix.datatables import MDDataTable
-from kivymd.uix.textfield import MDTextField
-from kivymd.uix.button import MDRaisedButton
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.list import TwoLineAvatarListItem
+import pyodbc
+
 from kivy.metrics import dp
-from kivy.properties import StringProperty
+from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.textfield import MDTextField
+
 
 # popup
 
 # На экране 2 кнопки, текстовые поля отсутствуют , нажимаем либо создать либо на экран, возникает попап, ок и cancel
 #
 # Define our APP
+class DataBaseConn:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.conn = pyodbc.connect(
+            r'Driver={Microsoft Access Driver (*.mdb, '
+            r'*.accdb)};DBQ=C:\Users\guest\PycharmProjects\pythonProject\UsersDb.accdb;')
+        self.cursor = self.conn.cursor()
+
+    def create_db(self):
+        self.cursor.execute('DROP TABLE USERS;')
+        self.cursor.execute('CREATE TABLE USERS(id INTEGER PRIMARY KEY,first_name TEXT,last_name TEXT,email TEXT,phone_number INTEGER);')
+        self.conn.commit()
+
+    def select_all(self):
+        self.cursor.execute('SELECT * FROM USERS;')
+        return [x for x in self.cursor.fetchall()]
+
+    def select_all_columns(self):
+        self.cursor.execute(r'SELECT *'
+                            r'FROM USERS;')
+        return [x for x in self.cursor.fetchall()]
+
+    def reset_all(self):
+        self.cursor.execute('DELETE * FROM USERS')
+
+    def insert_new(self):
+        self.cursor.execute('INSERT INTO USERS(first_name,last_name,email,phone_number) VALUES ("a","b","c",1);')
 
 
 class MyApp(MDApp):
@@ -49,9 +77,7 @@ class MyApp(MDApp):
                 ("[color=#FFFFE0]Email Address[/color]", dp(20)),
                 ("[color=#FFFFE0]Phone Number[/color]", dp(20))
             ],
-            row_data=[
-                (1, 2, 3, 4),
-            ]
+            row_data=[]
         )
 
         self.table.bind(on_row_press=self.on_row_click)
@@ -109,21 +135,21 @@ class MyApp(MDApp):
         except AttributeError:
             print('LOX')
         self.dialog = MDDialog(
-                height="120dp",
-                type="custom",
-                content_cls=self.bl_2,
-                buttons=[
-                    MDRaisedButton(
-                        text="CANCEL",
-                        on_release=self.close_dialog
+            height="120dp",
+            type="custom",
+            content_cls=self.bl_2,
+            buttons=[
+                MDRaisedButton(
+                    text="CANCEL",
+                    on_release=self.close_dialog
 
-                    ),
-                    MDRaisedButton(
-                        text="EDIT",
-                        on_release=self.on_edit_button_click
-                    ),
-                ],
-            )
+                ),
+                MDRaisedButton(
+                    text="EDIT",
+                    on_release=self.on_edit_button_click
+                ),
+            ],
+        )
         self.dialog.open()
 
     def close_dialog(self, *args):
@@ -165,10 +191,13 @@ class MyApp(MDApp):
         self.bl_3.add_widget(self.delete_button)
 
         self.bl_main.add_widget(self.bl_1)
-        #self.bl_main.add_widget(self.bl_2)
         self.bl_main.add_widget(self.bl_3)
         return self.bl_main
 
 
 if __name__ == '__main__':
     MyApp().run()
+    r = DataBaseConn()
+    #r.create_db()
+    #r.insert_new()
+    #print(r.select_all())
