@@ -11,37 +11,52 @@ from kivymd.uix.textfield import MDTextField
 
 
 # popup
-
 # На экране 2 кнопки, текстовые поля отсутствуют , нажимаем либо создать либо на экран, возникает попап, ок и cancel
-#
 # Define our APP
 class DataBaseConn:
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.conn = pyodbc.connect(
             r'Driver={Microsoft Access Driver (*.mdb, '
-            r'*.accdb)};DBQ=C:\Users\guest\PycharmProjects\pythonProject\UsersDb.accdb;')
+            r'*.accdb)};DBQ=C:\Users\guest\PycharmProjects\pythonProject1\UsersDb.accdb;')
         self.cursor = self.conn.cursor()
 
     def create_db(self):
         self.cursor.execute('DROP TABLE USERS;')
-        self.cursor.execute('CREATE TABLE USERS(id INTEGER PRIMARY KEY,first_name TEXT,last_name TEXT,email TEXT,phone_number INTEGER);')
+        self.cursor.execute(
+            'CREATE TABLE USERS(id autoincrement,first_name TEXT,last_name TEXT,email TEXT,phone_number INT);')
         self.conn.commit()
 
     def select_all(self):
         self.cursor.execute('SELECT * FROM USERS;')
         return [x for x in self.cursor.fetchall()]
 
-    def select_all_columns(self):
-        self.cursor.execute(r'SELECT *'
-                            r'FROM USERS;')
-        return [x for x in self.cursor.fetchall()]
-
     def reset_all(self):
         self.cursor.execute('DELETE * FROM USERS')
 
-    def insert_new(self):
-        self.cursor.execute('INSERT INTO USERS(first_name,last_name,email,phone_number) VALUES ("a","b","c",1);')
+    def insert_new(self, first_arg: str, sec_arg: str, third_arg: str, fourth_arg: int):
+        sql = '''INSERT INTO Users (first_name,last_name,email,phone_number) VALUES (?,?,?,?)'''
+        self.cursor.execute(sql, first_arg, sec_arg, third_arg, fourth_arg)
+        self.conn.commit()
+
+    def delete_row(self, row_id: int):
+        sql = "DELETE FROM Users WHERE id=?;"
+        self.cursor.execute(sql, row_id)
+        self.conn.commit()
+
+    def update_row(self, row_id, first_arg, sec_arg, third_arg, fourth_arg):
+        sql = f'''UPDATE Users
+        SET first_name = ?,
+        last_name = ?,
+        email = ?,
+        phone_number = ?
+        WHERE id = ?;'''
+        self.cursor.execute(sql, first_arg, sec_arg, third_arg, fourth_arg, row_id)
+        self.conn.commit()
+
+    def last_row_id(self):
+        self.cursor.execute(r'SELECT * FROM USERS;')
+        return self.cursor.fetchall()[-1][0]
 
 
 class MyApp(MDApp):
@@ -49,8 +64,10 @@ class MyApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self.r = DataBaseConn()
         # Define other variables
         self.dialog = None
+        self.temp_id = 0
         self.index = 0
         self.first_row_temp = 0
         self.second_row_temp = 0
@@ -72,25 +89,21 @@ class MyApp(MDApp):
             size_hint=(1, 2),
             pos_hint={"center_x": .5, "center_y": .5},
             column_data=[
+                ("[color=#FFFFE0]ID[/color]", dp(20)),
                 ("[color=#FFFFE0]First Name[/color]", dp(20)),
                 ("[color=#FFFFE0]Last Name[/color]", dp(20)),
                 ("[color=#FFFFE0]Email Address[/color]", dp(20)),
                 ("[color=#FFFFE0]Phone Number[/color]", dp(20))
             ],
-            row_data=[]
+            row_data=r.select_all()
         )
 
         self.table.bind(on_row_press=self.on_row_click)
 
-        self.edit_button = MDRaisedButton(
-            text="Edit",
+        self.add_button = MDRaisedButton(
+            text="Add",
             size_hint=(0.2, 1),
-            on_release=self.on_edit_button_click
-        )
-        self.post_button = MDRaisedButton(
-            text="Post",
-            size_hint=(0.2, 1),
-            on_release=self.on_post_button_click
+            on_release=self.on_add_button_click
         )
         self.delete_button = MDRaisedButton(
             text="Delete",
@@ -123,13 +136,38 @@ class MyApp(MDApp):
         )
 
     def on_row_click(self, instance_table, current_row):
-        self.index = current_row.index // 4
-        first, second, third, fourth = instance_table.row_data[self.index]
+        print(current_row.index)
+        self.index = current_row.index // 5
+        self.temp_id, first, second, third, fourth = instance_table.row_data[self.index]
         temp_list = [str(first), str(second), str(third), str(fourth)]
         self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = temp_list
-        self.show_confirmation_dialog()
+        self.show_edit_dialog()
 
     def show_confirmation_dialog(self):
+        try:
+            self.bl_2.parent.remove_widget(self.bl_2)
+        except AttributeError:
+            print('LOX')
+        self.dialog = MDDialog(
+            height="120dp",
+            type="custom",
+            content_cls=self.bl_2,
+            buttons=[
+                MDRaisedButton(
+                    text="CANCEL",
+                    on_release=self.close_dialog
+
+                ),
+                MDRaisedButton(
+                    text="POST",
+                    on_release=self.on_post_button_click  # here new function
+
+                ),
+            ],
+        )
+        self.dialog.open()
+
+    def show_edit_dialog(self):
         try:
             self.bl_2.parent.remove_widget(self.bl_2)
         except AttributeError:
@@ -148,6 +186,10 @@ class MyApp(MDApp):
                     text="EDIT",
                     on_release=self.on_edit_button_click
                 ),
+                MDRaisedButton(
+                    text="DELETE",
+                    on_release=self.on_delete_button_click
+                ),
             ],
         )
         self.dialog.open()
@@ -158,21 +200,37 @@ class MyApp(MDApp):
 
     def on_delete_button_click(self, *args):
         try:
+            self.r.delete_row(self.temp_id)
             self.table.remove_row(self.table.row_data[self.index])
-            self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = ' ', ' ', ' ', ' '
+            self.close_dialog()
         except IndexError:
             pass
 
+    def on_add_button_click(self, *args):
+        self.show_confirmation_dialog()
+
     def on_post_button_click(self, *args):
-        self.table.row_data.append(
-            [self.input_first_name.text, self.input_second_name.text, self.input_email.text,
-             self.input_phone_number.text])
-        self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = ' ', ' ', ' ', ' '
+        try:
+            r.insert_new(self.input_first_name.text, self.input_second_name.text,
+                         self.input_email.text, self.input_phone_number.text)
+            self.table.row_data.append(
+                [r.last_row_id(), self.input_first_name.text, self.input_second_name.text,
+                 self.input_email.text,
+                 self.input_phone_number.text])
+            self.input_first_name.text, self.input_second_name.text = ' ', ' '
+            self.input_email.text, self.input_phone_number.text = ' ', ' '
+            self.close_dialog()
+        except IndexError:
+            pass
 
     def on_edit_button_click(self, *args):
         try:
+            self.r.update_row(self.temp_id, self.input_first_name.text, self.input_second_name.text,
+                              self.input_email.text,
+                              self.input_phone_number.text)
             self.table.update_row(self.table.row_data[self.index],
-                                  [self.input_first_name.text, self.input_second_name.text, self.input_email.text,
+                                  [self.temp_id, self.input_first_name.text, self.input_second_name.text,
+                                   self.input_email.text,
                                    self.input_phone_number.text])
             self.input_first_name.text, self.input_second_name.text, self.input_email.text, self.input_phone_number.text = ' ', ' ', ' ', ' '
         except IndexError:
@@ -186,9 +244,7 @@ class MyApp(MDApp):
         self.bl_2.add_widget(self.input_email)
         self.bl_2.add_widget(self.input_phone_number)
 
-        self.bl_3.add_widget(self.edit_button)
-        self.bl_3.add_widget(self.post_button)
-        self.bl_3.add_widget(self.delete_button)
+        self.bl_3.add_widget(self.add_button)
 
         self.bl_main.add_widget(self.bl_1)
         self.bl_main.add_widget(self.bl_3)
@@ -196,8 +252,8 @@ class MyApp(MDApp):
 
 
 if __name__ == '__main__':
-    MyApp().run()
     r = DataBaseConn()
-    #r.create_db()
-    #r.insert_new()
-    #print(r.select_all())
+    MyApp().run()
+    # r.create_db()
+    # r.insert_new()
+    print(r.select_all())
